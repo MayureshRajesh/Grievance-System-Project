@@ -1,0 +1,204 @@
+.landing-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-gray-50);
+}
+
+/* Header */
+.landing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-xl);
+    background: var(--color-gradient);
+    border-bottom: none;
+}
+
+.header-logo {
+    font-size: 1.25rem;
+    color: var(--color-white);
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-3xl) var(--spacing-lg);
+}
+
+/* Institution Branding */
+.institution-branding {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.institution-icon {
+    width: 72px;
+    height: 72px;
+    background: var(--color-gradient);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-lg);
+    color: var(--color-white);
+}
+
+.institution-name {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+    margin-bottom: var(--spacing-xs);
+}
+
+.institution-subtitle {
+    font-size: 1.125rem;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+/* Login Card */
+.login-card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-2xl);
+    width: 100%;
+    max-width: 420px;
+}
+
+.login-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-gray-800);
+    margin-bottom: var(--spacing-xs);
+}
+
+.login-subtitle {
+    font-size: 0.875rem;
+    color: var(--color-gray-500);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Login Type Tabs */
+.login-tabs {
+    display: flex;
+    background-color: var(--color-gray-100);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    margin-bottom: var(--spacing-xl);
+}
+
+.login-tab {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-gray-600);
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.login-tab.active {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.login-tab:not(.active):hover {
+    color: var(--color-gray-800);
+}
+
+/* Form Fields */
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-gray-700);
+    margin-bottom: var(--spacing-sm);
+}
+
+.form-input {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    color: var(--color-gray-800);
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.form-input::placeholder {
+    color: var(--color-gray-400);
+}
+
+/* Submit Button */
+.submit-button {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-gradient);
+    color: var(--color-white);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: 600;
+    transition: opacity 0.2s ease;
+    margin-top: var(--spacing-sm);
+}
+
+.submit-button:hover {
+    opacity: 0.95;
+}
+
+/* Demo Credentials */
+.demo-credentials {
+    text-align: center;
+    margin-top: var(--spacing-lg);
+    font-size: 0.8125rem;
+    color: var(--color-gray-500);
+}
+
+.demo-credentials a {
+    color: var(--color-primary);
+}
+
+/* Footer Info */
+.footer-info {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-gray-500);
+    font-size: 0.8125rem;
+}
+
+/* Responsive - Desktop First */
+@media (max-width: 480px) {
+    .institution-name {
+        font-size: 1.5rem;
+    }
+
+    .institution-subtitle {
+        font-size: 1rem;
+    }
+
+    .login-card {
+        padding: var(--spacing-xl);
+        margin: 0 var(--spacing-md);
+    }
+}
