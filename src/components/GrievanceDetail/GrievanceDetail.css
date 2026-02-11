@@ -1,0 +1,312 @@
+.detail-overlay {
+    padding: 0;
+}
+
+.grievance-detail {
+    background: var(--color-white);
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    overflow: hidden;
+    box-shadow: none;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.close-btn {
+    position: absolute;
+    top: var(--spacing-lg);
+    right: var(--spacing-lg);
+    background: var(--color-surface);
+    border: none;
+    border-radius: var(--radius-full);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: background-color 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.close-btn:hover {
+    background-color: var(--color-border);
+}
+
+.detail-content {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Main Content */
+.detail-main {
+    padding: var(--spacing-xl);
+    padding-right: var(--spacing-lg);
+    overflow-y: auto;
+    border-right: 1px solid var(--color-border);
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding-right: 50px;
+}
+
+.detail-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--color-text);
+    flex: 1;
+}
+
+.status-badge.large {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-size: 0.875rem;
+}
+
+.detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--color-text-light);
+    font-size: 0.875rem;
+}
+
+.detail-submitter {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--color-text-light);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.detail-description {
+    margin-bottom: var(--spacing-xl);
+}
+
+.detail-description h3,
+.detail-image h3,
+.detail-progress h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.detail-description p {
+    color: var(--color-text);
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.detail-image {
+    margin-bottom: var(--spacing-xl);
+}
+
+.detail-image img {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+}
+
+.detail-progress {
+    margin-bottom: var(--spacing-lg);
+}
+
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.progress-container .progress-bar {
+    flex: 1;
+    height: 10px;
+}
+
+.progress-container span {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    min-width: 40px;
+}
+
+/* Comments Section */
+.detail-comments {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--color-surface);
+}
+
+.detail-comments h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+    margin: 0;
+}
+
+.comments-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.loading-comments,
+.no-comments {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--color-text-light);
+    text-align: center;
+    padding: var(--spacing-xl);
+}
+
+.comment {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    max-width: 85%;
+}
+
+.comment.student {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    align-self: flex-start;
+}
+
+.comment.admin {
+    background-color: #e0e7ff;
+    border: 1px solid #c7d2fe;
+    align-self: flex-end;
+}
+
+.comment.own {
+    background-color: #dbeafe;
+}
+
+.comment.admin.own {
+    background-color: #c7d2fe;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+    gap: var(--spacing-sm);
+}
+
+.comment-author {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-light);
+}
+
+.comment-time {
+    font-size: 0.7rem;
+    color: var(--color-text-light);
+}
+
+.comment-message {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Comment Input */
+.comment-input {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-white);
+}
+
+.comment-input input {
+    flex: 1;
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.comment-input input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.comment-input button {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    border: none;
+    background-color: var(--color-primary);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.comment-input button:hover:not(:disabled) {
+    background-color: var(--color-primary-dark);
+}
+
+.comment-input button:disabled {
+    background-color: var(--color-border);
+    cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .detail-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+    }
+
+    .detail-main {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+        overflow-y: auto;
+    }
+
+    .detail-comments {
+        overflow: hidden;
+    }
+}
