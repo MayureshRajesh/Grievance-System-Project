@@ -28,7 +28,8 @@ const LOCATION_LABELS = {
     c_block_hostel: 'C Block Hostel',
     d1_block_hostel: 'D1 Block Hostel',
     d2_block_hostel: 'D2 Block Hostel',
-    sports_ground: 'Sports Ground',
+    e_block_hostel: 'E Block Hostel',
+    sports_ground: 'Sports Ground'
 };
 
 const STATUS_COLORS = {

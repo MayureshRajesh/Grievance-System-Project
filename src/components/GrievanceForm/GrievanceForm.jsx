@@ -30,7 +30,8 @@ const LOCATIONS = [
     { value: 'c_block_hostel', label: 'C Block Hostel' },
     { value: 'd1_block_hostel', label: 'D1 Block Hostel' },
     { value: 'd2_block_hostel', label: 'D2 Block Hostel' },
-    { value: 'sports_ground', label: 'Sports Ground' },
+    { value: 'e_block_hostel', label: 'E Block Hostel' },
+    { value: 'sports_ground', label: 'Sports Ground' }
 ];
 
 const PRIVACY_OPTIONS = [
