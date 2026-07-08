@@ -6,12 +6,11 @@ import './GrievanceForm.css';
 
 const CATEGORIES = [
     { value: '', label: 'Select a category' },
-    { value: 'infrastructure', label: 'Infrastructure' },
-    { value: 'food_services', label: 'Food Services' },
-    { value: 'academic', label: 'Academic Issues' },
-    { value: 'hostel', label: 'Hostel Related' },
-    { value: 'security', label: 'Security' },
-    { value: 'transportation', label: 'Transportation' },
+    { value: 'electrical', label: 'Electrical' },
+    { value: 'plumbing', label: 'Plumbing' },
+    { value: 'furniture', label: 'Furniture' },
+    { value: 'cleanliness', label: 'Cleanliness' },
+    { value: 'wifi_network', label: 'WiFi/Network' },
     { value: 'other', label: 'Other' },
 ];
 

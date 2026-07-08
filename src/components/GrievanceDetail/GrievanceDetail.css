@@ -198,26 +198,38 @@
     padding: var(--spacing-md);
     border-radius: var(--radius-md);
     max-width: 85%;
+    align-self: flex-start; /* Default: Align other person's comments to the left */
+}
+
+.comment.own {
+    align-self: flex-end; /* Align own comments to the right */
+    background-color: #dbeafe;
+    border: 1px solid #bfdbfe;
 }
 
 .comment.student {
     background-color: var(--color-white);
     border: 1px solid var(--color-border);
-    align-self: flex-start;
 }
 
 .comment.admin {
     background-color: #e0e7ff;
     border: 1px solid #c7d2fe;
-    align-self: flex-end;
 }
 
-.comment.own {
-    background-color: #dbeafe;
+.comment.supervisor {
+    background-color: #fef3c7;
+    border: 1px solid #fde68a;
 }
 
 .comment.admin.own {
     background-color: #c7d2fe;
+    border: 1px solid #a5b4fc;
+}
+
+.comment.supervisor.own {
+    background-color: #fde68a;
+    border: 1px solid #fcd34d;
 }
 
 .comment-header {
@@ -309,4 +321,105 @@
     .detail-comments {
         overflow: hidden;
     }
+}
+
+/* Comments Tabs styling */
+.comments-tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 2px solid var(--color-gray-100);
+    margin-bottom: var(--spacing-md);
+    background-color: var(--color-gray-50);
+    padding: 2px;
+    border-radius: var(--radius-md);
+}
+
+.comment-tab-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-gray-500);
+    cursor: pointer;
+    border-radius: calc(var(--radius-md) - 2px);
+    transition: all 0.2s ease;
+}
+
+.comment-tab-btn:hover {
+    color: var(--color-gray-800);
+    background-color: rgba(0,0,0,0.03);
+}
+
+.comment-tab-btn.active {
+    color: var(--color-primary);
+    background-color: var(--color-white);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Escalation Ping styling */
+.ping-action-wrapper {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px dashed var(--color-gray-100);
+}
+
+.btn-ping-department {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2);
+    transition: all 0.25s ease;
+}
+
+.btn-ping-department:hover {
+    box-shadow: 0 6px 14px rgba(220, 38, 38, 0.35);
+    transform: translateY(-1px);
+}
+
+.btn-ping-department:active {
+    transform: translateY(0);
+}
+
+.ping-banner-comment {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+    border-left: 4px solid #f59e0b;
+}
+
+.ping-banner-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: #b45309;
+    font-weight: 700;
+    font-size: 0.775rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.ping-banner-msg {
+    margin: 0 0 6px 0;
+    font-size: 0.85rem;
+    color: #78350f;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.ping-banner-time {
+    font-size: 0.725rem;
+    color: #b45309;
+    opacity: 0.85;
 }

@@ -158,7 +158,14 @@ function LandingPage() {
           </form>
 
           <p className="demo-credentials">
-            Demo: {activeTab === 'student' ? 'student@vitstudent.ac.in' : 'admin@vit.ac.in'} / 1234
+            {activeTab === 'student' ? (
+              <span>Demo Student: <strong>student@vitstudent.ac.in</strong> / 1234</span>
+            ) : (
+              <span style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                <span>Dept Admin: <strong>admin@vit.ac.in</strong> / 1234</span>
+                <span>Supervisor: <strong>supervisor1@vit.ac.in</strong> / 1234</span>
+              </span>
+            )}
           </p>
         </div>
       </main>

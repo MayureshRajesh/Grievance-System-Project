@@ -1,18 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { LogOut, FileText, Clock, CheckCircle, Filter, User, AlertCircle, Eye } from 'lucide-react';
+import { 
+    LogOut, FileText, Clock, CheckCircle, Filter, User, 
+    AlertCircle, Eye, Zap, Droplet, Wrench, Sparkles, Wifi, 
+    MoreHorizontal, ChevronRight, LayoutDashboard 
+} from 'lucide-react';
 import GrievanceDetail from '../components/GrievanceDetail/GrievanceDetail';
 import './Dashboard.css';
 
 const CATEGORY_LABELS = {
-    infrastructure: 'Infrastructure',
-    food_services: 'Food Services',
-    academic: 'Academic Issues',
-    hostel: 'Hostel Related',
-    security: 'Security',
-    transportation: 'Transportation',
+    electrical: 'Electrical',
+    plumbing: 'Plumbing',
+    furniture: 'Furniture',
+    cleanliness: 'Cleanliness',
+    wifi_network: 'WiFi/Network',
     other: 'Other',
+};
+
+const getCategoryLabel = (category) => {
+    if (!category) return '';
+    const normalized = category.toLowerCase().replace('/', '_');
+    return CATEGORY_LABELS[normalized] || category;
+};
+
+const DEPT_DESCRIPTIONS = {
+    electrical: 'Power failures, wiring, socket repairs, lights, and appliances.',
+    plumbing: 'Water supply, pipe leaks, tap replacements, and washroom issues.',
+    furniture: 'Broken chairs, classroom desks, classroom boards, and doors.',
+    cleanliness: 'Waste disposal, sweeping, dusting, and general hygiene maintenance.',
+    wifi_network: 'Internet connectivity, access points, speed, and portal login issues.',
+    other: 'General, non-specific campus administrative or minor grievances.',
+};
+
+const DEPT_ICONS = {
+    electrical: Zap,
+    plumbing: Droplet,
+    furniture: Wrench,
+    cleanliness: Sparkles,
+    wifi_network: Wifi,
+    other: MoreHorizontal,
 };
 
 const STATUS_OPTIONS = [
@@ -33,24 +60,30 @@ const STATUS_COLORS = {
 
 function AdminDashboard() {
     const { user, signOut } = useAuth();
+    const [selectedDepartment, setSelectedDepartment] = useState(null);
     const [grievances, setGrievances] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filterCategory, setFilterCategory] = useState('');
+    const [pingedIds, setPingedIds] = useState(new Set());
     const [filterStatus, setFilterStatus] = useState('');
     const [selectedGrievance, setSelectedGrievance] = useState(null);
 
-    // Fetch all grievances
+    // Fetch all grievances for the selected department
     const fetchGrievances = async () => {
+        if (!selectedDepartment) return;
         setLoading(true);
         try {
             let query = supabase
                 .from('grievances')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*');
 
-            if (filterCategory) {
-                query = query.eq('category', filterCategory);
+            if (selectedDepartment === 'wifi_network') {
+                query = query.or('category.ilike.wifi_network,category.ilike.wifi/network');
+            } else {
+                query = query.ilike('category', selectedDepartment);
             }
+
+            query = query.order('created_at', { ascending: false });
+
             if (filterStatus) {
                 query = query.eq('status', filterStatus);
             }
@@ -61,6 +94,16 @@ function AdminDashboard() {
                 console.error('Fetch error:', error);
             } else {
                 setGrievances(data || []);
+                
+                // Fetch pings
+                const { data: pings, error: pingError } = await supabase
+                    .from('internal_notes')
+                    .select('grievance_id')
+                    .like('message', '[PING]%');
+                
+                if (!pingError && pings) {
+                    setPingedIds(new Set(pings.map(p => p.grievance_id)));
+                }
             }
         } catch (err) {
             console.error('Error:', err);
@@ -70,8 +113,10 @@ function AdminDashboard() {
     };
 
     useEffect(() => {
-        fetchGrievances();
-    }, [filterCategory, filterStatus]);
+        if (selectedDepartment) {
+            fetchGrievances();
+        }
+    }, [selectedDepartment, filterStatus]);
 
     const handleLogout = async () => {
         await signOut();
@@ -129,15 +174,82 @@ function AdminDashboard() {
         });
     };
 
+    // If department is not selected, render department selector view
+    if (!selectedDepartment) {
+        return (
+            <div className="dept-selector-page">
+                {/* Header */}
+                <header className="dashboard-header animate-slide-down">
+                    <div className="header-left">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <LayoutDashboard size={24} />
+                            <h1>Department Admin Portal</h1>
+                        </div>
+                        <p className="welcome-text">Select your department area to start processing</p>
+                    </div>
+                    <div className="header-right">
+                        <div className="user-info">
+                            <User size={20} />
+                            <span>{user?.email}</span>
+                        </div>
+                        <button className="logout-btn" onClick={handleLogout}>
+                            <LogOut size={18} />
+                            Logout
+                        </button>
+                    </div>
+                </header>
+
+                <main className="dept-selector-content">
+                    <div className="selector-title-section animate-fade-in">
+                        <h2>Welcome back, Administrator</h2>
+                        <p>Choose the department you want to manage to view and update pending grievances.</p>
+                    </div>
+
+                    <div className="dept-cards-grid animate-fade-in-up">
+                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+                            const IconComponent = DEPT_ICONS[key] || MoreHorizontal;
+                            const desc = DEPT_DESCRIPTIONS[key] || '';
+                            return (
+                                <div 
+                                    key={key} 
+                                    className="dept-select-card"
+                                    onClick={() => setSelectedDepartment(key)}
+                                >
+                                    <div className="dept-card-icon-wrapper" data-dept={key}>
+                                        <IconComponent size={28} />
+                                    </div>
+                                    <div className="dept-card-info">
+                                        <h3>{label}</h3>
+                                        <p>{desc}</p>
+                                    </div>
+                                    <div className="dept-card-arrow">
+                                        <ChevronRight size={20} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </main>
+
+                <footer className="footer-info">
+                    <p>© 2026 VIT Chennai. All rights reserved.</p>
+                </footer>
+            </div>
+        );
+    }
+
     return (
         <div className="dashboard admin-dashboard">
             {/* Header */}
             <header className="dashboard-header">
                 <div className="header-left">
-                    <h1>Admin Dashboard</h1>
-                    <p className="welcome-text">Manage campus grievances</p>
+                    <h1>{CATEGORY_LABELS[selectedDepartment]} Administration</h1>
+                    <p className="welcome-text">Manage {CATEGORY_LABELS[selectedDepartment].toLowerCase()} department grievances</p>
                 </div>
                 <div className="header-right">
+                    <button className="change-dept-btn" onClick={() => setSelectedDepartment(null)}>
+                        Switch Department
+                    </button>
                     <div className="user-info">
                         <User size={20} />
                         <span>{user?.email}</span>
@@ -198,16 +310,6 @@ function AdminDashboard() {
                         <span>Filters:</span>
                     </div>
                     <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
-                        className="filter-select"
-                    >
-                        <option value="">All Categories</option>
-                        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                        ))}
-                    </select>
-                    <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                         className="filter-select"
@@ -217,11 +319,10 @@ function AdminDashboard() {
                             <option key={status.value} value={status.value}>{status.label}</option>
                         ))}
                     </select>
-                    {(filterCategory || filterStatus) && (
+                    {filterStatus && (
                         <button
                             className="btn-clear-filters"
                             onClick={() => {
-                                setFilterCategory('');
                                 setFilterStatus('');
                             }}
                         >
@@ -231,10 +332,10 @@ function AdminDashboard() {
                 </div>
 
                 {/* Grievances List */}
-                <div className="grievances-section">
+                <div className="grievances-section animate-fade-in">
                     <div className="section-header">
-                        <h2>All Grievances</h2>
-                        <p>{grievances.length} total reports</p>
+                        <h2>All Grievances ({CATEGORY_LABELS[selectedDepartment]})</h2>
+                        <p>{grievances.length} total reports in this department</p>
                     </div>
 
                     {loading ? (
@@ -243,13 +344,12 @@ function AdminDashboard() {
                         <div className="empty-state">
                             <FileText size={48} />
                             <h3>No grievances found</h3>
-                            <p>No grievances match your current filters</p>
+                            <p>No grievances match your current filters or department</p>
                         </div>
                     ) : (
                         <div className="grievance-table">
                             <div className="table-header">
                                 <div className="th">Title</div>
-                                <div className="th">Category</div>
                                 <div className="th">Submitted By</div>
                                 <div className="th">Date</div>
                                 <div className="th">Status</div>
@@ -262,15 +362,17 @@ function AdminDashboard() {
                                     onClick={() => handleViewDetails(grievance)}
                                 >
                                     <div className="td td-title">
-                                        <strong>{grievance.title}</strong>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <strong>{grievance.title}</strong>
+                                            {pingedIds.has(grievance.id) && (
+                                                <span className="urgent-ping-badge animate-pulse">
+                                                    ⚡ PINGED (URGENT)
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="description-preview">
                                             {grievance.description.substring(0, 80)}...
                                         </p>
-                                    </div>
-                                    <div className="td">
-                                        <span className="category-tag">
-                                            {CATEGORY_LABELS[grievance.category] || grievance.category}
-                                        </span>
                                     </div>
                                     <div className="td">
                                         {grievance.privacy === 'anonymous' ? (

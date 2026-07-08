@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LandingPage from './components/LandingPage/LandingPage';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import SupervisorDashboard from './pages/SupervisorDashboard';
 
 // Loading component
 function LoadingSpinner() {
@@ -38,6 +39,10 @@ function DashboardSelector() {
   }
 
   // Show dashboard based on actual role
+  if (userRole === 'supervisor') {
+    return <SupervisorDashboard />;
+  }
+
   if (userRole === 'admin') {
     return <AdminDashboard />;
   }

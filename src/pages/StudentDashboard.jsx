@@ -7,13 +7,18 @@ import GrievanceDetail from '../components/GrievanceDetail/GrievanceDetail';
 import './Dashboard.css';
 
 const CATEGORY_LABELS = {
-    infrastructure: 'Infrastructure',
-    food_services: 'Food Services',
-    academic: 'Academic Issues',
-    hostel: 'Hostel Related',
-    security: 'Security',
-    transportation: 'Transportation',
+    electrical: 'Electrical',
+    plumbing: 'Plumbing',
+    furniture: 'Furniture',
+    cleanliness: 'Cleanliness',
+    wifi_network: 'WiFi/Network',
     other: 'Other',
+};
+
+const getCategoryLabel = (category) => {
+    if (!category) return '';
+    const normalized = category.toLowerCase().replace('/', '_');
+    return CATEGORY_LABELS[normalized] || category;
 };
 
 const STATUS_COLORS = {
@@ -185,7 +190,7 @@ function StudentDashboard() {
                                             <div className="grievance-main">
                                                 <h3>{grievance.title}</h3>
                                                 <span className="grievance-category">
-                                                    {CATEGORY_LABELS[grievance.category] || grievance.category}
+                                                    {getCategoryLabel(grievance.category)}
                                                 </span>
                                                 <div className="grievance-progress">
                                                     <span>Progress</span>
@@ -250,7 +255,7 @@ function StudentDashboard() {
                                         <div className="grievance-main">
                                             <h3>{grievance.title}</h3>
                                             <span className="grievance-category">
-                                                {CATEGORY_LABELS[grievance.category] || grievance.category}
+                                                {getCategoryLabel(grievance.category)}
                                             </span>
                                             <p className="grievance-description">{grievance.description.substring(0, 100)}...</p>
                                             <p className="grievance-date">

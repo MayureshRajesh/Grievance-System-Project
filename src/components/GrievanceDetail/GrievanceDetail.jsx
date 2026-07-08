@@ -1,17 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { X, MapPin, Tag, Clock, Send, Image, User } from 'lucide-react';
+import { X, MapPin, Tag, Clock, Send, Image, User, AlertTriangle } from 'lucide-react';
 import './GrievanceDetail.css';
 
 const CATEGORY_LABELS = {
-    infrastructure: 'Infrastructure',
-    food_services: 'Food Services',
-    academic: 'Academic Issues',
-    hostel: 'Hostel Related',
-    security: 'Security',
-    transportation: 'Transportation',
+    electrical: 'Electrical',
+    plumbing: 'Plumbing',
+    furniture: 'Furniture',
+    cleanliness: 'Cleanliness',
+    wifi_network: 'WiFi/Network',
     other: 'Other',
+};
+
+const getCategoryLabel = (category) => {
+    if (!category) return '';
+    const normalized = category.toLowerCase().replace('/', '_');
+    return CATEGORY_LABELS[normalized] || category;
+};
+
+const getRoleFromEmail = (email) => {
+    if (!email) return 'student';
+    const lowerEmail = email.toLowerCase();
+    if (lowerEmail === 'supervisor1@vit.ac.in' || lowerEmail === 'supervisor@vit.ac.in' || lowerEmail === 'chiefadmin@vit.ac.in') return 'supervisor';
+    if (lowerEmail.endsWith('@vit.ac.in') && !lowerEmail.endsWith('@vitstudent.ac.in')) return 'admin';
+    return 'student';
 };
 
 const LOCATION_LABELS = {
@@ -48,6 +61,11 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
     const [sending, setSending] = useState(false);
     const commentsEndRef = useRef(null);
 
+    // Internal Notes states
+    const [activeCommentTab, setActiveCommentTab] = useState('public');
+    const [internalNotes, setInternalNotes] = useState([]);
+    const [loadingNotes, setLoadingNotes] = useState(true);
+
     // Fetch comments
     const fetchComments = async () => {
         try {
@@ -69,14 +87,38 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
         }
     };
 
+    // Fetch internal notes
+    const fetchInternalNotes = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('internal_notes')
+                .select('*')
+                .eq('grievance_id', grievance.id)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching internal notes:', error);
+            } else {
+                setInternalNotes(data || []);
+            }
+        } catch (err) {
+            console.error('Error:', err);
+        } finally {
+            setLoadingNotes(false);
+        }
+    };
+
     useEffect(() => {
         fetchComments();
+        if (userRole === 'admin' || userRole === 'supervisor') {
+            fetchInternalNotes();
+        }
     }, [grievance.id]);
 
-    // Scroll to bottom when new comments arrive
+    // Scroll to bottom when new comments/notes arrive
     useEffect(() => {
         commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [comments]);
+    }, [comments, internalNotes, activeCommentTab]);
 
     const handleSendComment = async (e) => {
         e.preventDefault();
@@ -97,6 +139,56 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
             } else {
                 setNewComment('');
                 fetchComments();
+            }
+        } catch (err) {
+            console.error('Error:', err);
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleSendInternalNote = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim() || sending) return;
+
+        setSending(true);
+        try {
+            const { error } = await supabase.from('internal_notes').insert({
+                grievance_id: grievance.id,
+                sender_email: user.email,
+                message: newComment.trim(),
+            });
+
+            if (error) {
+                console.error('Error sending internal note:', error);
+            } else {
+                setNewComment('');
+                fetchInternalNotes();
+            }
+        } catch (err) {
+            console.error('Error:', err);
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleSendPing = async () => {
+        if (sending) return;
+        setSending(true);
+        try {
+            const { error } = await supabase.from('internal_notes').insert({
+                grievance_id: grievance.id,
+                sender_email: user.email,
+                message: '[PING] ⚠️ CHIEF SUPERVISOR ESCALATION: Please review and address this grievance immediately.',
+            });
+
+            if (error) {
+                console.error('Error sending ping:', error);
+            } else {
+                fetchInternalNotes();
+                if (onUpdate) {
+                    onUpdate(); // Triggers parent dashboard to refresh pings
+                }
             }
         } catch (err) {
             console.error('Error:', err);
@@ -132,6 +224,8 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
         return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     };
 
+    const isSupervisorOrAdmin = userRole === 'admin' || userRole === 'supervisor';
+
     return (
         <div className="modal-overlay detail-overlay" onClick={handleOverlayClick}>
             <div className="grievance-detail">
@@ -158,7 +252,7 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
                         <div className="detail-meta">
                             <div className="meta-item">
                                 <Tag size={16} />
-                                <span>{CATEGORY_LABELS[grievance.category] || grievance.category}</span>
+                                <span>{getCategoryLabel(grievance.category)}</span>
                             </div>
                             <div className="meta-item">
                                 <MapPin size={16} />
@@ -206,49 +300,146 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
                         </div>
                     </div>
 
-                    {/* Right: Comments */}
+                    {/* Right: Comments & Notes */}
                     <div className="detail-comments">
-                        <h3>Comments & Updates</h3>
+                        {isSupervisorOrAdmin ? (
+                            <div className="comments-tabs">
+                                <button
+                                    type="button"
+                                    className={`comment-tab-btn ${activeCommentTab === 'public' ? 'active' : ''}`}
+                                    onClick={() => setActiveCommentTab('public')}
+                                >
+                                    Public Comments
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`comment-tab-btn ${activeCommentTab === 'internal' ? 'active' : ''}`}
+                                    onClick={() => setActiveCommentTab('internal')}
+                                >
+                                    Internal Notes
+                                </button>
+                            </div>
+                        ) : (
+                            <h3>Comments & Updates</h3>
+                        )}
 
-                        <div className="comments-list">
-                            {loadingComments ? (
-                                <div className="loading-comments">Loading comments...</div>
-                            ) : comments.length === 0 ? (
-                                <div className="no-comments">
-                                    <p>No comments yet. Start the conversation!</p>
-                                </div>
-                            ) : (
-                                comments.map((comment) => (
-                                    <div
-                                        key={comment.id}
-                                        className={`comment ${comment.user_role === 'admin' ? 'admin' : 'student'} ${comment.user_id === user.id ? 'own' : ''}`}
-                                    >
-                                        <div className="comment-header">
-                                            <span className="comment-author">
-                                                {comment.user_role === 'admin' ? '👔 Admin' : '🎓 Student'}
-                                                {comment.user_id === user.id && ' (You)'}
-                                            </span>
-                                            <span className="comment-time">{formatCommentTime(comment.created_at)}</span>
+                        {activeCommentTab === 'public' ? (
+                            // Public Comments view
+                            <>
+                                <div className="comments-list">
+                                    {loadingComments ? (
+                                        <div className="loading-comments">Loading comments...</div>
+                                    ) : comments.length === 0 ? (
+                                        <div className="no-comments">
+                                            <p>No comments yet. Start the conversation!</p>
                                         </div>
-                                        <p className="comment-message">{comment.message}</p>
-                                    </div>
-                                ))
-                            )}
-                            <div ref={commentsEndRef} />
-                        </div>
+                                    ) : (
+                                        comments.map((comment) => (
+                                            <div
+                                                key={comment.id}
+                                                className={`comment ${comment.user_role === 'supervisor' ? 'supervisor admin' : comment.user_role === 'admin' ? 'admin' : 'student'} ${comment.user_id === user.id ? 'own' : ''}`}
+                                            >
+                                                <div className="comment-header">
+                                                    <span className="comment-author">
+                                                        {comment.user_role === 'supervisor' ? '👑 Supervisor' : comment.user_role === 'admin' ? '👔 Admin' : '🎓 Student'}
+                                                        {comment.user_id === user.id && ' (You)'}
+                                                    </span>
+                                                    <span className="comment-time">{formatCommentTime(comment.created_at)}</span>
+                                                </div>
+                                                <p className="comment-message">{comment.message}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                    <div ref={commentsEndRef} />
+                                </div>
 
-                        <form className="comment-input" onSubmit={handleSendComment}>
-                            <input
-                                type="text"
-                                placeholder="Type a message..."
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                disabled={sending}
-                            />
-                            <button type="submit" disabled={!newComment.trim() || sending}>
-                                <Send size={18} />
-                            </button>
-                        </form>
+                                <form className="comment-input" onSubmit={handleSendComment}>
+                                    <input
+                                        type="text"
+                                        placeholder="Type a public message..."
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        disabled={sending}
+                                    />
+                                    <button type="submit" disabled={!newComment.trim() || sending}>
+                                        <Send size={18} />
+                                    </button>
+                                </form>
+                            </>
+                        ) : (
+                            // Internal Notes view
+                            <>
+                                <div className="comments-list">
+                                    {userRole === 'supervisor' && (
+                                        <div className="ping-action-wrapper">
+                                            <button
+                                                type="button"
+                                                className="btn-ping-department"
+                                                onClick={handleSendPing}
+                                                disabled={sending}
+                                            >
+                                                ⚡ Ping Department (Remind ASAP)
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {loadingNotes ? (
+                                        <div className="loading-comments">Loading notes...</div>
+                                    ) : internalNotes.length === 0 ? (
+                                        <div className="no-comments">
+                                            <p>No internal notes yet. Use this section to discuss with standard admins/supervisors privately.</p>
+                                        </div>
+                                    ) : (
+                                        internalNotes.map((note) => {
+                                            const isPing = note.message.startsWith('[PING]');
+                                            if (isPing) {
+                                                return (
+                                                    <div key={note.id} className="ping-banner-comment animate-fade-in">
+                                                        <div className="ping-banner-header">
+                                                            <AlertTriangle size={14} />
+                                                            <span>Escalation Ping</span>
+                                                        </div>
+                                                        <p className="ping-banner-msg">{note.message.replace('[PING] ', '')}</p>
+                                                        <span className="ping-banner-time">Posted {formatCommentTime(note.created_at)}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            const noteRole = getRoleFromEmail(note.sender_email);
+                                            const isOwn = note.sender_email === user.email;
+                                            return (
+                                                <div
+                                                    key={note.id}
+                                                    className={`comment ${noteRole === 'supervisor' ? 'supervisor admin' : 'admin'} ${isOwn ? 'own' : ''}`}
+                                                >
+                                                    <div className="comment-header">
+                                                        <span className="comment-author">
+                                                            {noteRole === 'supervisor' ? '👑 Supervisor' : '👔 Dept Admin'}
+                                                            {isOwn && ' (You)'}
+                                                        </span>
+                                                        <span className="comment-time">{formatCommentTime(note.created_at)}</span>
+                                                    </div>
+                                                    <p className="comment-message">{note.message}</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                    <div ref={commentsEndRef} />
+                                </div>
+
+                                <form className="comment-input" onSubmit={handleSendInternalNote}>
+                                    <input
+                                        type="text"
+                                        placeholder="Type an internal note..."
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        disabled={sending}
+                                    />
+                                    <button type="submit" disabled={!newComment.trim() || sending}>
+                                        <Send size={18} />
+                                    </button>
+                                </form>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

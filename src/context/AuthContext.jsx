@@ -9,6 +9,8 @@ export const useAuth = () => useContext(AuthContext);
 const getRoleFromEmail = (email) => {
     if (!email) return 'student';
     const lowerEmail = email.toLowerCase();
+    // Supervisor credentials check
+    if (lowerEmail === 'supervisor1@vit.ac.in' || lowerEmail === 'chiefadmin@vit.ac.in') return 'supervisor';
     // Admin if ends with @vit.ac.in (not vitstudent)
     if (lowerEmail.endsWith('@vit.ac.in') && !lowerEmail.endsWith('@vitstudent.ac.in')) return 'admin';
     return 'student';
@@ -162,6 +164,7 @@ export function AuthProvider({ children }) {
         signOut,
         isStudent: userRole === 'student',
         isAdmin: userRole === 'admin',
+        isSupervisor: userRole === 'supervisor',
     };
 
     return (
