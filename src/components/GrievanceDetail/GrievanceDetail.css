@@ -369,7 +369,7 @@
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md);
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: var(--color-white);
+    color: #ffffff;
     border: none;
     border-radius: var(--radius-md);
     font-size: 0.85rem;

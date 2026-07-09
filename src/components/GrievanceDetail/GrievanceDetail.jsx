@@ -161,6 +161,7 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
 
             if (error) {
                 console.error('Error sending internal note:', error);
+                alert(`Failed to send internal note: ${error.message}`);
             } else {
                 setNewComment('');
                 fetchInternalNotes();
@@ -184,6 +185,7 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
 
             if (error) {
                 console.error('Error sending ping:', error);
+                alert(`Failed to send ping: ${error.message}`);
             } else {
                 fetchInternalNotes();
                 if (onUpdate) {
