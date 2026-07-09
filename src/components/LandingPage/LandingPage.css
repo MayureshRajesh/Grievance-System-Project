@@ -17,7 +17,7 @@
 
 .header-logo {
     font-size: 1.25rem;
-    color: var(--color-white);
+    color: #ffffff;
 }
 
 .header-actions {
@@ -50,7 +50,7 @@
     align-items: center;
     justify-content: center;
     margin: 0 auto var(--spacing-lg);
-    color: var(--color-white);
+    color: #ffffff;
 }
 
 .institution-name {
@@ -111,7 +111,7 @@
 
 .login-tab.active {
     background-color: var(--color-primary);
-    color: var(--color-white);
+    color: #ffffff;
 }
 
 .login-tab:not(.active):hover {
@@ -155,7 +155,7 @@
     width: 100%;
     padding: var(--spacing-md) var(--spacing-lg);
     background: var(--color-gradient);
-    color: var(--color-white);
+    color: #ffffff;
     border-radius: var(--radius-md);
     font-size: 1rem;
     font-weight: 600;

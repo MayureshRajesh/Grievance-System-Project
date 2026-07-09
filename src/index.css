@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Primary Colors - VIT Blue Gradient */
+  /* Primary Colors - VIT Blue Gradient (overridden by ThemeContext) */
   --color-primary: #2F77C8;
   --color-primary-light: #348FDB;
   --color-primary-dark: #2559A7;
@@ -11,19 +11,6 @@
   /* Accent - Coral/Orange for CTA */
   --color-accent: #e76f51;
   --color-accent-light: #f4a261;
-
-  /* Neutral Colors */
-  --color-white: #ffffff;
-  --color-gray-50: #f8fafc;
-  --color-gray-100: #f1f5f9;
-  --color-gray-200: #e2e8f0;
-  --color-gray-300: #cbd5e1;
-  --color-gray-400: #94a3b8;
-  --color-gray-500: #64748b;
-  --color-gray-600: #475569;
-  --color-gray-700: #334155;
-  --color-gray-800: #1e293b;
-  --color-gray-900: #0f172a;
 
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -42,11 +29,433 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-full: 50%;
+}
+
+/* ──── Light Theme (default) ──── */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --color-white: #ffffff;
+  --color-background: #f8fafc;
+  --color-surface: #f1f5f9;
+  --color-text: #0f172a;
+  --color-text-light: #475569;
+  --color-border: #cbd5e1;
+  --color-card: #ffffff;
+
+  /* Neutral Grays */
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #0f172a;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+
+  /* Input */
+  --color-input-bg: #ffffff;
+  --color-input-border: #cbd5e1;
+  --color-input-text: #0f172a;
+
+  /* Modal */
+  --color-modal-bg: #ffffff;
+  --color-modal-overlay: rgba(15, 23, 42, 0.5);
+}
+
+/* ──── Dark Theme ──── */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-white: #1e293b;
+  --color-background: #0b0f19;
+  --color-surface: #1e293b;
+  --color-text: #f8fafc;
+  --color-text-light: #94a3b8;
+  --color-border: #334155;
+  --color-card: #1e293b;
+
+  /* Inverted Grays */
+  --color-gray-50: #0b0f19;
+  --color-gray-100: #0f172a;
+  --color-gray-200: #1e293b;
+  --color-gray-300: #334155;
+  --color-gray-400: #475569;
+  --color-gray-500: #64748b;
+  --color-gray-600: #94a3b8;
+  --color-gray-700: #cbd5e1;
+  --color-gray-800: #e2e8f0;
+  --color-gray-900: #f8fafc;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+
+  /* Input */
+  --color-input-bg: #0f172a;
+  --color-input-border: #475569;
+  --color-input-text: #f8fafc;
+
+  /* Modal */
+  --color-modal-bg: #1e293b;
+  --color-modal-overlay: rgba(0, 0, 0, 0.75);
+}
+
+/* ──── EXPLICIT LIGHT THEME OVERRIDES (Guarantees true light mode) ──── */
+:root:not([data-theme="dark"]),
+[data-theme="light"] {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+:root:not([data-theme="dark"]) .dashboard,
+:root:not([data-theme="dark"]) .dept-selector-page,
+[data-theme="light"] .dashboard,
+[data-theme="light"] .dept-selector-page {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+:root:not([data-theme="dark"]) .stat-card,
+[data-theme="light"] .stat-card {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:root:not([data-theme="dark"]) .stat-card .stat-label,
+[data-theme="light"] .stat-card .stat-label {
+  color: #64748b;
+}
+
+:root:not([data-theme="dark"]) .stat-card .stat-value,
+[data-theme="light"] .stat-card .stat-value {
+  color: #0f172a;
+}
+
+:root:not([data-theme="dark"]) .grievances-section,
+[data-theme="light"] .grievances-section {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+:root:not([data-theme="dark"]) .filters-section,
+[data-theme="light"] .filters-section {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+:root:not([data-theme="dark"]) .grievance-table,
+[data-theme="light"] .grievance-table {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:root:not([data-theme="dark"]) .grievance-table .table-header,
+[data-theme="light"] .grievance-table .table-header {
+  background-color: #f1f5f9;
+  border-bottom: 2px solid #cbd5e1;
+  color: #475569;
+}
+
+:root:not([data-theme="dark"]) .grievance-table .table-row,
+[data-theme="light"] .grievance-table .table-row {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+:root:not([data-theme="dark"]) .grievance-table .table-row:hover,
+[data-theme="light"] .grievance-table .table-row:hover {
+  background-color: #f8fafc;
+}
+
+:root:not([data-theme="dark"]) .dept-summary-card,
+[data-theme="light"] .dept-summary-card {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:root:not([data-theme="dark"]) .dept-summary-card:hover,
+[data-theme="light"] .dept-summary-card:hover {
+  background-color: #f8fafc;
+  border-color: var(--color-primary-light);
+}
+
+:root:not([data-theme="dark"]) .dept-select-card,
+[data-theme="light"] .dept-select-card {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:root:not([data-theme="dark"]) .dept-select-card:hover,
+[data-theme="light"] .dept-select-card:hover {
+  background-color: #f8fafc;
+  border-color: var(--color-primary-light);
+}
+
+:root:not([data-theme="dark"]) .grievance-item,
+[data-theme="light"] .grievance-item {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+:root:not([data-theme="dark"]) .dashboard-tabs,
+[data-theme="light"] .dashboard-tabs {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:root:not([data-theme="dark"]) .search-input,
+:root:not([data-theme="dark"]) .filter-select,
+:root:not([data-theme="dark"]) .status-select,
+[data-theme="light"] .search-input,
+[data-theme="light"] .filter-select,
+[data-theme="light"] .status-select {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+:root:not([data-theme="dark"]) .oversight-banner,
+[data-theme="light"] .oversight-banner {
+  background-color: #e0e7ff;
+  border-color: #818cf8;
+  color: #312e81;
+}
+
+/* ──── EXPLICIT DARK THEME OVERRIDES (Guarantees deep dark mode) ──── */
+[data-theme="dark"] {
+  background-color: #0b0f19;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .dashboard,
+[data-theme="dark"] .dept-selector-page {
+  background-color: #0b0f19;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .stat-card {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .stat-card .stat-label {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .stat-card .stat-value {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .grievances-section {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .filters-section {
+  background-color: #111827;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .grievance-table {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .grievance-table .table-header {
+  background-color: #0f172a;
+  border-bottom: 2px solid #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .grievance-table .table-row {
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .grievance-table .table-row:hover {
+  background-color: #253348;
+}
+
+[data-theme="dark"] .status-select,
+[data-theme="dark"] .filter-select {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .filter-select option,
+[data-theme="dark"] .status-select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .dept-summary-card {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .dept-summary-card:hover {
+  background-color: #253348;
+  border-color: var(--color-primary-light);
+}
+
+[data-theme="dark"] .dept-card-active {
+  border-color: var(--color-primary);
+  background-color: #253348;
+}
+
+[data-theme="dark"] .dept-select-card {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .dept-select-card:hover {
+  background-color: #253348;
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .grievance-item {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .dashboard-tabs {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .search-input {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .oversight-banner {
+  background-color: rgba(79, 70, 229, 0.15);
+  border-color: rgba(79, 70, 229, 0.35);
+  color: #c7d2fe;
+}
+
+[data-theme="dark"] .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+[data-theme="dark"] .grievance-detail {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .comment {
+  background-color: #253348;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .comment-input input {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .progress-bar {
+  background-color: #334155;
+}
+
+[data-theme="dark"] .grievance-form {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .comments-tabs .comment-tab-btn {
+  background-color: #0f172a;
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .comments-tabs .comment-tab-btn.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .change-dept-btn {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .supervisor-badge {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* ──── Smooth transition for theme changes ──── */
+body,
+.dashboard,
+.dept-selector-page,
+.stat-card,
+.grievances-section,
+.filters-section,
+.grievance-table,
+.grievance-table .table-row,
+.grievance-table .table-header,
+.dept-summary-card,
+.dept-select-card,
+.grievance-item,
+.grievance-detail,
+.comment,
+.comment-input input,
+.search-input,
+.filter-select,
+.status-select,
+.oversight-banner,
+input, select, textarea {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* CSS Reset */
@@ -66,8 +475,8 @@ html {
 
 body {
   font-family: var(--font-family);
-  color: var(--color-gray-800);
-  background-color: var(--color-gray-50);
+  color: var(--color-text);
+  background-color: var(--color-background);
   line-height: 1.6;
   min-height: 100vh;
 }

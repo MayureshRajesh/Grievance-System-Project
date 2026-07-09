@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { 
     LogOut, FileText, Clock, CheckCircle, Filter, User, 
     AlertCircle, Eye, Search, Zap, Droplet, Wrench, Sparkles, Wifi, 
-    MoreHorizontal, ShieldAlert, BarChart3
+    MoreHorizontal, ShieldAlert, BarChart3, ArrowLeft
 } from 'lucide-react';
 import GrievanceDetail from '../components/GrievanceDetail/GrievanceDetail';
 import './Dashboard.css';
@@ -63,6 +63,7 @@ function SupervisorDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedGrievance, setSelectedGrievance] = useState(null);
     const [pingedIds, setPingedIds] = useState(new Set());
+    const [selectedDepartment, setSelectedDepartment] = useState(null);
 
     // Fetch all grievances across all departments
     const fetchGrievances = async () => {
@@ -122,8 +123,24 @@ function SupervisorDashboard() {
         setSelectedGrievance(grievance);
     };
 
-    // Calculate aggregated statistics
-    const stats = {
+    const handleDepartmentClick = (deptKey) => {
+        setSelectedDepartment(deptKey);
+        setFilterCategory(deptKey);
+        setFilterStatus('');
+        setSearchQuery('');
+        window.scrollTo({ top: 0 });
+    };
+
+    const handleBackToOverview = () => {
+        setSelectedDepartment(null);
+        setFilterCategory('');
+        setFilterStatus('');
+        setSearchQuery('');
+        window.scrollTo({ top: 0 });
+    };
+
+    // Calculate aggregated statistics (always from unfiltered data for overview)
+    const allStats = {
         total: grievances.length,
         pending: grievances.filter(g => g.status === 'pending').length,
         inProgress: grievances.filter(g => g.status === 'in_review' || g.status === 'in_progress').length,
@@ -147,16 +164,16 @@ function SupervisorDashboard() {
         return acc;
     }, {});
 
-    // Filter grievances by search query client-side - safe against nulls
+    // Filter grievances by search query client-side
     const filteredGrievances = grievances.filter(g => {
         const title = g.title || '';
         const description = g.description || '';
         const email = g.user_email || '';
-        const query = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase();
         
-        return title.toLowerCase().includes(query) ||
-               description.toLowerCase().includes(query) ||
-               email.toLowerCase().includes(query);
+        return title.toLowerCase().includes(q) ||
+               description.toLowerCase().includes(q) ||
+               email.toLowerCase().includes(q);
     });
 
     const formatDate = (dateString) => {
@@ -169,6 +186,221 @@ function SupervisorDashboard() {
         });
     };
 
+    // ──────────────────────────────────────────────
+    // Department Drilldown View (full-screen)
+    // ──────────────────────────────────────────────
+    if (selectedDepartment) {
+        const DeptIcon = DEPT_ICONS[selectedDepartment] || MoreHorizontal;
+        const deptLabel = CATEGORY_LABELS[selectedDepartment];
+        const dStats = deptBreakdown[selectedDepartment] || { total: 0, pending: 0, inProgress: 0, resolved: 0, rate: 0 };
+
+        return (
+            <div className="dashboard supervisor-dashboard">
+                {/* Header */}
+                <header className="dashboard-header super-header animate-slide-down">
+                    <div className="header-left">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <DeptIcon size={24} />
+                            <h1>{deptLabel} Department — Supervisor Oversight</h1>
+                        </div>
+                        <p className="welcome-text">Viewing all {deptLabel.toLowerCase()} grievances</p>
+                    </div>
+                    <div className="header-right">
+                        <button className="change-dept-btn" onClick={handleBackToOverview}>
+                            <ArrowLeft size={16} />
+                            Back to Overview
+                        </button>
+                        <div className="user-info">
+                            <User size={20} />
+                            <span>{user?.email}</span>
+                        </div>
+                        <button className="logout-btn" onClick={handleLogout}>
+                            <LogOut size={18} />
+                            Logout
+                        </button>
+                    </div>
+                </header>
+
+                <main className="dashboard-content">
+                    {/* Department Stats */}
+                    <div className="stats-grid stats-4 animate-fade-in">
+                        <div className="stat-card border-left-super">
+                            <div className="stat-info">
+                                <span className="stat-label">Total Reports</span>
+                                <span className="stat-value">{dStats.total}</span>
+                            </div>
+                            <div className="stat-icon" style={{ backgroundColor: '#e0e7ff' }}>
+                                <FileText size={24} color="#4f46e5" />
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-info">
+                                <span className="stat-label">Pending</span>
+                                <span className="stat-value">{dStats.pending}</span>
+                            </div>
+                            <div className="stat-icon" style={{ backgroundColor: '#fef3c7' }}>
+                                <AlertCircle size={24} color="#d97706" />
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-info">
+                                <span className="stat-label">Active Processing</span>
+                                <span className="stat-value">{dStats.inProgress}</span>
+                            </div>
+                            <div className="stat-icon" style={{ backgroundColor: '#dbeafe' }}>
+                                <Clock size={24} color="#2563eb" />
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-info">
+                                <span className="stat-label">Resolved</span>
+                                <span className="stat-value">{dStats.resolved}</span>
+                            </div>
+                            <div className="stat-icon" style={{ backgroundColor: '#d1fae5' }}>
+                                <CheckCircle size={24} color="#059669" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Department Grievances */}
+                    <div className="grievances-section animate-fade-in-up">
+                        <div className="section-header search-enabled-header">
+                            <div>
+                                <h2>{deptLabel} Grievances</h2>
+                                <p>Showing {filteredGrievances.length} records</p>
+                            </div>
+                            <div className="search-bar-wrapper">
+                                <Search size={18} className="search-icon" />
+                                <input 
+                                    type="text" 
+                                    placeholder={`Search ${deptLabel.toLowerCase()} grievances...`}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="search-input"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="filters-section" style={{ border: 'none', paddingLeft: 0, paddingRight: 0 }}>
+                            <div className="filter-group">
+                                <Filter size={18} />
+                                <span>Filter by Status:</span>
+                            </div>
+                            <select
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                                className="filter-select"
+                            >
+                                <option value="">All Statuses</option>
+                                {STATUS_OPTIONS.map((status) => (
+                                    <option key={status.value} value={status.value}>{status.label}</option>
+                                ))}
+                            </select>
+                            {(filterStatus || searchQuery) && (
+                                <button
+                                    className="btn-clear-filters"
+                                    onClick={() => {
+                                        setFilterStatus('');
+                                        setSearchQuery('');
+                                    }}
+                                >
+                                    Clear Filters
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Table */}
+                        {loading ? (
+                            <div className="loading-state">Loading...</div>
+                        ) : filteredGrievances.length === 0 ? (
+                            <div className="empty-state">
+                                <FileText size={48} />
+                                <h3>No grievances found</h3>
+                                <p>No {deptLabel.toLowerCase()} grievances match your filters.</p>
+                            </div>
+                        ) : (
+                            <div className="grievance-table">
+                                <div className="table-header">
+                                    <div className="th">Title</div>
+                                    <div className="th">Submitted By</div>
+                                    <div className="th">Date</div>
+                                    <div className="th">Status</div>
+                                    <div className="th">Action</div>
+                                </div>
+                                {filteredGrievances.map((grievance) => (
+                                    <div
+                                        key={grievance.id}
+                                        className="table-row clickable"
+                                        onClick={() => handleViewDetails(grievance)}
+                                    >
+                                        <div className="td td-title">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <strong>{grievance.title}</strong>
+                                                {pingedIds.has(grievance.id) && (
+                                                    <span className="urgent-ping-badge animate-pulse">
+                                                        ⚡ PINGED (URGENT)
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="description-preview">
+                                                {grievance.description.substring(0, 80)}...
+                                            </p>
+                                        </div>
+                                        <div className="td">
+                                            {grievance.privacy === 'anonymous' ? (
+                                                <span className="anonymous">Anonymous</span>
+                                            ) : (
+                                                grievance.user_email
+                                            )}
+                                        </div>
+                                        <div className="td">{formatDate(grievance.created_at)}</div>
+                                        <div className="td">
+                                            <span
+                                                className="status-badge"
+                                                style={{
+                                                    backgroundColor: STATUS_COLORS[grievance.status]?.bg,
+                                                    color: STATUS_COLORS[grievance.status]?.text,
+                                                }}
+                                            >
+                                                {STATUS_COLORS[grievance.status]?.label || grievance.status}
+                                            </span>
+                                        </div>
+                                        <div className="td td-actions">
+                                            <button
+                                                className="btn-view-small-super"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewDetails(grievance);
+                                                }}
+                                                title="Inspect & Supervise"
+                                            >
+                                                <Eye size={14} />
+                                                <span>Inspect</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </main>
+
+                {/* Grievance Detail Modal */}
+                {selectedGrievance && (
+                    <GrievanceDetail
+                        grievance={selectedGrievance}
+                        onClose={() => setSelectedGrievance(null)}
+                        onUpdate={fetchGrievances}
+                    />
+                )}
+            </div>
+        );
+    }
+
+    // ──────────────────────────────────────────────
+    // Main Overview Dashboard
+    // ──────────────────────────────────────────────
     return (
         <div className="dashboard supervisor-dashboard">
             {/* Header */}
@@ -211,7 +443,7 @@ function SupervisorDashboard() {
                     <div className="stat-card border-left-super">
                         <div className="stat-info">
                             <span className="stat-label">Total Campus Reports</span>
-                            <span className="stat-value">{stats.total}</span>
+                            <span className="stat-value">{allStats.total}</span>
                         </div>
                         <div className="stat-icon" style={{ backgroundColor: '#e0e7ff' }}>
                             <FileText size={24} color="#4f46e5" />
@@ -220,7 +452,7 @@ function SupervisorDashboard() {
                     <div className="stat-card">
                         <div className="stat-info">
                             <span className="stat-label">Total Pending</span>
-                            <span className="stat-value">{stats.pending}</span>
+                            <span className="stat-value">{allStats.pending}</span>
                         </div>
                         <div className="stat-icon" style={{ backgroundColor: '#fef3c7' }}>
                             <AlertCircle size={24} color="#d97706" />
@@ -229,7 +461,7 @@ function SupervisorDashboard() {
                     <div className="stat-card">
                         <div className="stat-info">
                             <span className="stat-label">Active (In Review/Progress)</span>
-                            <span className="stat-value">{stats.inProgress}</span>
+                            <span className="stat-value">{allStats.inProgress}</span>
                         </div>
                         <div className="stat-icon" style={{ backgroundColor: '#dbeafe' }}>
                             <Clock size={24} color="#2563eb" />
@@ -238,7 +470,7 @@ function SupervisorDashboard() {
                     <div className="stat-card">
                         <div className="stat-info">
                             <span className="stat-label">Total Resolved</span>
-                            <span className="stat-value">{stats.resolved}</span>
+                            <span className="stat-value">{allStats.resolved}</span>
                         </div>
                         <div className="stat-icon" style={{ backgroundColor: '#d1fae5' }}>
                             <CheckCircle size={24} color="#059669" />
@@ -250,7 +482,7 @@ function SupervisorDashboard() {
                 <section className="supervision-section animate-fade-in-up">
                     <div className="section-header">
                         <h2>Department Coordination Panel</h2>
-                        <p>Real-time resolution rates and grievance load across all departments</p>
+                        <p>Click a department to view its full report ledger</p>
                     </div>
 
                     <div className="dept-supervision-grid">
@@ -258,7 +490,11 @@ function SupervisorDashboard() {
                             const IconComponent = DEPT_ICONS[key] || MoreHorizontal;
                             const dStats = deptBreakdown[key] || { total: 0, pending: 0, inProgress: 0, resolved: 0, rate: 0 };
                             return (
-                                <div key={key} className="dept-summary-card">
+                                <div
+                                    key={key}
+                                    className="dept-summary-card clickable"
+                                    onClick={() => handleDepartmentClick(key)}
+                                >
                                     <div className="dept-summary-header">
                                         <div className="dept-summary-icon" data-dept={key}>
                                             <IconComponent size={20} />
@@ -304,7 +540,7 @@ function SupervisorDashboard() {
                     </div>
                 </section>
 
-                {/* Supervision Filters & Table */}
+                {/* Universal Grievance Ledger */}
                 <div className="grievances-section animate-fade-in-up" style={{ marginTop: 'var(--spacing-xl)' }}>
                     <div className="section-header search-enabled-header">
                         <div>
