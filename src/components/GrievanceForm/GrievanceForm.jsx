@@ -47,64 +47,76 @@ function GrievanceForm({ onClose, onSuccess }) {
     const [location, setLocation] = useState('');
     const [description, setDescription] = useState('');
     const [privacy, setPrivacy] = useState('private');
-    const [imageFile, setImageFile] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [filePreview, setFilePreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleImageChange = (e) => {
+    const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             // Validate file type
-            if (!file.type.startsWith('image/')) {
-                setError('Please select an image file.');
+            if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                setError('Please select an image or PDF file.');
                 return;
             }
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                setError('Image size must be less than 5MB.');
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                setError('File size must be less than 2MB.');
                 return;
             }
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
+            setSelectedFile(file);
+            if (file.type.startsWith('image/')) {
+                setFilePreview(URL.createObjectURL(file));
+            } else {
+                setFilePreview(null); // No preview for PDF
+            }
             setError('');
         }
     };
 
-    const removeImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
+    const removeFile = () => {
+        setSelectedFile(null);
+        setFilePreview(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
     };
 
-    const uploadImage = async () => {
-        if (!imageFile) return null;
+    const uploadFile = async () => {
+        if (!selectedFile) return null;
 
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `public/${fileName}`;
+        const response = await fetch('http://localhost:3001/api/presigned-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fileName: selectedFile.name,
+                fileType: selectedFile.type,
+                fileSize: selectedFile.size
+            })
+        });
 
-        const { data, error: uploadError } = await supabase.storage
-            .from('grievance-images')
-            .upload(filePath, imageFile, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (uploadError) {
-            console.error('Upload error:', uploadError);
-            throw new Error(`Image upload failed: ${uploadError.message}`);
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to get presigned URL');
         }
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
-            .from('grievance-images')
-            .getPublicUrl(filePath);
+        const { presignedUrl, finalUrl } = await response.json();
 
-        console.log('Image uploaded, URL:', urlData.publicUrl);
-        return urlData.publicUrl;
+        const uploadResponse = await fetch(presignedUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': selectedFile.type,
+            },
+            body: selectedFile
+        });
+
+        if (!uploadResponse.ok) {
+            throw new Error('Failed to upload file to S3');
+        }
+
+        console.log('File uploaded, URL:', finalUrl);
+        return finalUrl;
     };
 
     const handleSubmit = async (e) => {
@@ -132,19 +144,19 @@ function GrievanceForm({ onClose, onSuccess }) {
         setLoading(true);
 
         try {
-            // Upload image if attached - MUST succeed if image is selected
-            let imageUrl = null;
-            if (imageFile) {
+            // Upload file if attached - MUST succeed if file is selected
+            let fileUrl = null;
+            if (selectedFile) {
                 try {
-                    imageUrl = await uploadImage();
-                    if (!imageUrl) {
-                        throw new Error('Failed to get image URL');
+                    fileUrl = await uploadFile();
+                    if (!fileUrl) {
+                        throw new Error('Failed to get file URL');
                     }
                 } catch (uploadErr) {
-                    console.error('Image upload failed:', uploadErr);
-                    setError(`Image upload failed: ${uploadErr.message}. Please try again or remove the image.`);
+                    console.error('File upload failed:', uploadErr);
+                    setError(`File upload failed: ${uploadErr.message}. Please try again or remove the file.`);
                     setLoading(false);
-                    return; // Block submission if image upload fails
+                    return; // Block submission if file upload fails
                 }
             }
 
@@ -158,7 +170,7 @@ function GrievanceForm({ onClose, onSuccess }) {
                     location,
                     description: description.trim(),
                     privacy,
-                    image_url: imageUrl,
+                    image_url: fileUrl,
                     status: 'pending',
                     progress: 0,
                 });
@@ -169,6 +181,17 @@ function GrievanceForm({ onClose, onSuccess }) {
                 setLoading(false);
                 return;
             }
+
+            // Trigger SNS notification for new grievance
+            fetch('http://localhost:3001/api/notify-new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title.trim(),
+                    category,
+                    userEmail: user.email
+                })
+            }).catch(err => console.error('Failed to send new grievance notification:', err));
 
             // Success
             if (onSuccess) {
@@ -267,24 +290,30 @@ function GrievanceForm({ onClose, onSuccess }) {
 
                         <div className="form-group">
                             <label>
-                                Attach Image <span className="optional">(Optional - recommended)</span>
+                                Attach File <span className="optional">(Optional - Image/PDF)</span>
                             </label>
-                            {!imagePreview ? (
+                            {!selectedFile ? (
                                 <div
                                     className="image-upload-area"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     <Upload size={24} />
-                                    <span>Click to upload an image</span>
-                                    <span className="hint">PNG, JPG up to 150KB</span>
+                                    <span>Click to upload a file</span>
+                                    <span className="hint">Images & PDFs up to 2MB</span>
                                 </div>
                             ) : (
                                 <div className="image-preview">
-                                    <img src={imagePreview} alt="Preview" />
+                                    {filePreview ? (
+                                        <img src={filePreview} alt="Preview" />
+                                    ) : (
+                                        <div style={{ padding: '20px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+                                            <p style={{ margin: 0, color: '#374151', fontWeight: '500' }}>{selectedFile.name}</p>
+                                        </div>
+                                    )}
                                     <button
                                         type="button"
                                         className="remove-image"
-                                        onClick={removeImage}
+                                        onClick={removeFile}
                                     >
                                         <X size={16} />
                                     </button>
@@ -293,8 +322,8 @@ function GrievanceForm({ onClose, onSuccess }) {
                             <input
                                 ref={fileInputRef}
                                 type="file"
-                                accept="image/*"
-                                onChange={handleImageChange}
+                                accept="image/*,application/pdf"
+                                onChange={handleFileChange}
                                 style={{ display: 'none' }}
                                 disabled={loading}
                             />
