@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-comprehend": "^3.1149.0",
     "@aws-sdk/client-s3": "^3.1147.0",
     "@aws-sdk/client-sns": "^3.1147.0",
     "@aws-sdk/s3-request-presigner": "^3.1147.0",

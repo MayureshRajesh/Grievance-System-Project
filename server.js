@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import { createClient } from '@supabase/supabase-js';
+import { isHighlyNegative } from './comprehendService.js';
 
 dotenv.config();
 
@@ -11,11 +13,106 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+);
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  }
+});
+
+// Endpoint to create a new grievance with automated sentiment-based priority detection
+app.post('/api/grievances', async (req, res) => {
+  try {
+    const {
+      subject,
+      title,
+      description,
+      category,
+      user_id,
+      user_email,
+      location,
+      privacy,
+      image_url,
+      status,
+      progress
+    } = req.body;
+
+    // Default priority for all new tickets
+    let priority = "NORMAL";
+
+    // Run the text through our AWS Comprehend utility
+    const needsHighPriority = await isHighlyNegative(description);
+
+    if (needsHighPriority) {
+      priority = "HIGH"; // Automatically escalate the ticket!
+    }
+
+    // Save to Supabase database
+    const grievanceRecord = {
+      description,
+      category,
+      priority,
+      title: title || subject || 'Untitled Grievance',
+      ...(subject && { subject }),
+      ...(user_id && { user_id }),
+      ...(user_email && { user_email }),
+      ...(location && { location }),
+      ...(privacy && { privacy }),
+      ...(image_url && { image_url }),
+      status: status || 'pending',
+      progress: progress !== undefined ? progress : 0
+    };
+
+    // Use user-authenticated client if Authorization header was passed from frontend
+    const authHeader = req.headers.authorization;
+    const dbClient = authHeader
+      ? createClient(
+          process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+          process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY,
+          { global: { headers: { Authorization: authHeader } } }
+        )
+      : supabase;
+
+    let { data, error } = await dbClient
+      .from('grievances')
+      .insert([grievanceRecord])
+      .select();
+
+    // If Supabase table doesn't have the priority column yet, retry without it and warn
+    if (error && error.message && error.message.includes("'priority' column")) {
+      console.warn("⚠️ Note: Supabase 'grievances' table does not have a 'priority' column yet. Add it via SQL: ALTER TABLE grievances ADD COLUMN priority TEXT DEFAULT 'NORMAL';");
+      const fallbackRecord = { ...grievanceRecord };
+      delete fallbackRecord.priority;
+      const retryResult = await dbClient
+        .from('grievances')
+        .insert([fallbackRecord])
+        .select();
+
+      if (!retryResult.error) {
+        return res.status(201).json({
+          message: "Grievance submitted (Notice: 'priority' column missing in Supabase schema cache)",
+          data: retryResult.data,
+          priority
+        });
+      }
+      error = retryResult.error;
+    }
+
+    if (error) {
+      console.error('Supabase error inserting grievance:', error);
+      return res.status(500).json({ error: error.message || error });
+    }
+
+    res.status(201).json({ message: "Grievance submitted", data, priority });
+  } catch (err) {
+    console.error('Error creating grievance:', err);
+    res.status(500).json({ error: 'Failed to create grievance.' });
   }
 });
 

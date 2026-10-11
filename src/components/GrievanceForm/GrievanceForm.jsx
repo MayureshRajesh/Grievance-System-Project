@@ -160,26 +160,56 @@ function GrievanceForm({ onClose, onSuccess }) {
                 }
             }
 
-            const { error: insertError } = await supabase
-                .from('grievances')
-                .insert({
-                    user_id: user.id,
-                    user_email: user.email,
-                    title: title.trim(),
-                    category,
-                    location,
-                    description: description.trim(),
-                    privacy,
-                    image_url: fileUrl,
-                    status: 'pending',
-                    progress: 0,
+            const grievancePayload = {
+                user_id: user.id,
+                user_email: user.email,
+                title: title.trim(),
+                category,
+                location,
+                description: description.trim(),
+                privacy,
+                image_url: fileUrl,
+                status: 'pending',
+                progress: 0,
+            };
+
+            let submitSuccess = false;
+
+            // Try submitting via backend API to run AWS Comprehend sentiment analysis & priority assignment
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const headers = { 'Content-Type': 'application/json' };
+                if (session?.access_token) {
+                    headers['Authorization'] = `Bearer ${session.access_token}`;
+                }
+
+                const apiRes = await fetch('http://localhost:3001/api/grievances', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(grievancePayload)
                 });
 
-            if (insertError) {
-                console.error('Insert error:', insertError);
-                setError(`Failed to submit: ${insertError.message}`);
-                setLoading(false);
-                return;
+                if (apiRes.ok) {
+                    submitSuccess = true;
+                } else {
+                    console.warn('Backend /api/grievances failed, falling back to direct Supabase insert.');
+                }
+            } catch (apiErr) {
+                console.warn('Backend unavailable, falling back to direct Supabase insert:', apiErr);
+            }
+
+            // Fallback to direct Supabase insert if backend wasn't reachable
+            if (!submitSuccess) {
+                const { error: insertError } = await supabase
+                    .from('grievances')
+                    .insert(grievancePayload);
+
+                if (insertError) {
+                    console.error('Insert error:', insertError);
+                    setError(`Failed to submit: ${insertError.message}`);
+                    setLoading(false);
+                    return;
+                }
             }
 
             // Trigger SNS notification for new grievance
