@@ -100,7 +100,7 @@ function GrievanceForm({ onClose, onSuccess }) {
             .from('grievance-images')
             .getPublicUrl(filePath);
 
-        return urlData.publicUrl;
+        return { url: urlData.publicUrl, path: filePath };
     };
 
     const uploadToS3 = async () => {
@@ -136,21 +136,24 @@ function GrievanceForm({ onClose, onSuccess }) {
         return finalUrl;
     };
 
-    // Upload to Supabase and S3 independently. Each URL is kept separately;
-    // fails only if both uploads fail.
+    // Upload to Supabase and S3 independently. Both copies are required:
+    // if either fails the whole upload fails, so no grievance is saved with a single copy.
     const uploadFile = async () => {
         const [supabaseRes, s3Res] = await Promise.allSettled([uploadToSupabase(), uploadToS3()]);
 
-        if (supabaseRes.status === 'rejected') console.error(supabaseRes.reason);
-        if (s3Res.status === 'rejected') console.error('S3 upload failed:', s3Res.reason);
-
-        if (supabaseRes.status === 'rejected' && s3Res.status === 'rejected') {
-            throw supabaseRes.reason;
+        const failure = [supabaseRes, s3Res].find((r) => r.status === 'rejected');
+        if (failure) {
+            console.error('Redundant upload failed:', failure.reason);
+            // Don't leave an orphaned copy behind in Supabase.
+            if (supabaseRes.status === 'fulfilled') {
+                await supabase.storage.from('grievance-images').remove([supabaseRes.value.path]);
+            }
+            throw failure.reason;
         }
 
         return {
-            supabaseUrl: supabaseRes.status === 'fulfilled' ? supabaseRes.value : null,
-            s3Url: s3Res.status === 'fulfilled' ? s3Res.value : null,
+            supabaseUrl: supabaseRes.value.url,
+            s3Url: s3Res.value,
         };
     };
 
@@ -201,7 +204,7 @@ function GrievanceForm({ onClose, onSuccess }) {
                 description: description.trim(),
                 privacy,
                 image_url: fileUrls.supabaseUrl,
-                ...(fileUrls.s3Url && { s3_image_url: fileUrls.s3Url }),
+                s3_image_url: fileUrls.s3Url,
                 status: 'pending',
                 progress: 0,
             };
