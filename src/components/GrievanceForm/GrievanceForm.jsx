@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Upload, X, Image } from 'lucide-react';
 import './GrievanceForm.css';
@@ -83,10 +84,27 @@ function GrievanceForm({ onClose, onSuccess }) {
         }
     };
 
-    const uploadFile = async () => {
-        if (!selectedFile) return null;
+    const uploadToSupabase = async () => {
+        const fileExt = selectedFile.name.split('.').pop();
+        const filePath = `public/${user.id}-${Date.now()}.${fileExt}`;
 
-        const response = await fetch('http://localhost:3001/api/presigned-url', {
+        const { error: uploadError } = await supabase.storage
+            .from('grievance-images')
+            .upload(filePath, selectedFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+            throw new Error(`Supabase upload failed: ${uploadError.message}`);
+        }
+
+        const { data: urlData } = supabase.storage
+            .from('grievance-images')
+            .getPublicUrl(filePath);
+
+        return urlData.publicUrl;
+    };
+
+    const uploadToS3 = async () => {
+        const response = await fetch(`${API_URL}/api/presigned-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -115,8 +133,25 @@ function GrievanceForm({ onClose, onSuccess }) {
             throw new Error('Failed to upload file to S3');
         }
 
-        console.log('File uploaded, URL:', finalUrl);
         return finalUrl;
+    };
+
+    // Upload to Supabase and S3 independently. Each URL is kept separately;
+    // fails only if both uploads fail.
+    const uploadFile = async () => {
+        const [supabaseRes, s3Res] = await Promise.allSettled([uploadToSupabase(), uploadToS3()]);
+
+        if (supabaseRes.status === 'rejected') console.error(supabaseRes.reason);
+        if (s3Res.status === 'rejected') console.error('S3 upload failed:', s3Res.reason);
+
+        if (supabaseRes.status === 'rejected' && s3Res.status === 'rejected') {
+            throw supabaseRes.reason;
+        }
+
+        return {
+            supabaseUrl: supabaseRes.status === 'fulfilled' ? supabaseRes.value : null,
+            s3Url: s3Res.status === 'fulfilled' ? s3Res.value : null,
+        };
     };
 
     const handleSubmit = async (e) => {
@@ -145,13 +180,10 @@ function GrievanceForm({ onClose, onSuccess }) {
 
         try {
             // Upload file if attached - MUST succeed if file is selected
-            let fileUrl = null;
+            let fileUrls = { supabaseUrl: null, s3Url: null };
             if (selectedFile) {
                 try {
-                    fileUrl = await uploadFile();
-                    if (!fileUrl) {
-                        throw new Error('Failed to get file URL');
-                    }
+                    fileUrls = await uploadFile();
                 } catch (uploadErr) {
                     console.error('File upload failed:', uploadErr);
                     setError(`File upload failed: ${uploadErr.message}. Please try again or remove the file.`);
@@ -168,7 +200,8 @@ function GrievanceForm({ onClose, onSuccess }) {
                 location,
                 description: description.trim(),
                 privacy,
-                image_url: fileUrl,
+                image_url: fileUrls.supabaseUrl,
+                ...(fileUrls.s3Url && { s3_image_url: fileUrls.s3Url }),
                 status: 'pending',
                 progress: 0,
             };
@@ -183,7 +216,7 @@ function GrievanceForm({ onClose, onSuccess }) {
                     headers['Authorization'] = `Bearer ${session.access_token}`;
                 }
 
-                const apiRes = await fetch('http://localhost:3001/api/grievances', {
+                const apiRes = await fetch(`${API_URL}/api/grievances`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(grievancePayload)
@@ -213,7 +246,7 @@ function GrievanceForm({ onClose, onSuccess }) {
             }
 
             // Trigger SNS notification for new grievance
-            fetch('http://localhost:3001/api/notify-new', {
+            fetch(`${API_URL}/api/notify-new`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
