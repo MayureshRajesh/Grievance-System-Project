@@ -282,9 +282,19 @@ function GrievanceDetail({ grievance, onClose, onUpdate }) {
                             <div className="detail-image">
                                 <h3>
                                     <Image size={16} />
-                                    Attached Image
+                                    Attached Image (Supabase)
                                 </h3>
-                                <img src={grievance.image_url} alt="Grievance attachment" />
+                                <img src={grievance.image_url} alt="Grievance attachment (Supabase)" />
+                            </div>
+                        )}
+
+                        {grievance.s3_image_url && (
+                            <div className="detail-image">
+                                <h3>
+                                    <Image size={16} />
+                                    Attached Image (AWS S3)
+                                </h3>
+                                <img src={grievance.s3_image_url} alt="Grievance attachment (AWS S3)" />
                             </div>
                         )}
 

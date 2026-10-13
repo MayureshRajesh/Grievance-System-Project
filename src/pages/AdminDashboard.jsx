@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { API_URL } from '../lib/api';
 import { 
     LogOut, FileText, Clock, CheckCircle, Filter, User, 
     AlertCircle, Eye, Zap, Droplet, Wrench, Sparkles, Wifi, 
@@ -145,7 +146,7 @@ function AdminDashboard() {
                 console.error('Update error:', error);
             } else {
                 // Trigger SNS notification
-                fetch('http://localhost:3001/api/notify-status', {
+                fetch(`${API_URL}/api/notify-status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

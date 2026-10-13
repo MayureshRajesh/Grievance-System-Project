@@ -39,6 +39,7 @@ app.post('/api/grievances', async (req, res) => {
       location,
       privacy,
       image_url,
+      s3_image_url,
       status,
       progress
     } = req.body;
@@ -65,6 +66,7 @@ app.post('/api/grievances', async (req, res) => {
       ...(location && { location }),
       ...(privacy && { privacy }),
       ...(image_url && { image_url }),
+      ...(s3_image_url && { s3_image_url }),
       status: status || 'pending',
       progress: progress !== undefined ? progress : 0
     };
@@ -207,7 +209,12 @@ app.post('/api/notify-new', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// Vercel invokes the exported app as a serverless function; only listen when run directly.
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+export default app;
