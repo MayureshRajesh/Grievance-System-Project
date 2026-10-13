@@ -144,6 +144,16 @@ function AdminDashboard() {
             if (error) {
                 console.error('Update error:', error);
             } else {
+                // Trigger SNS notification
+                fetch('http://localhost:3001/api/notify-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        grievanceId,
+                        newStatus
+                    })
+                }).catch(err => console.error('Failed to notify status:', err));
+
                 fetchGrievances();
             }
         } catch (err) {
