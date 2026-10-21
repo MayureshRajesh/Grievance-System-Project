@@ -6,6 +6,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { createClient } from '@supabase/supabase-js';
 import { isHighlyNegative } from './comprehendService.js';
+import { publishGrievanceMetrics, publishGrievanceMetricsSafe } from './metricsService.js';
 
 dotenv.config();
 
@@ -97,6 +98,7 @@ app.post('/api/grievances', async (req, res) => {
         .select();
 
       if (!retryResult.error) {
+        await publishGrievanceMetricsSafe();
         return res.status(201).json({
           message: "Grievance submitted (Notice: 'priority' column missing in Supabase schema cache)",
           data: retryResult.data,
@@ -110,6 +112,9 @@ app.post('/api/grievances', async (req, res) => {
       console.error('Supabase error inserting grievance:', error);
       return res.status(500).json({ error: error.message || error });
     }
+
+    // Awaited (not fire-and-forget) because Vercel may freeze the function after the response.
+    await publishGrievanceMetricsSafe();
 
     res.status(201).json({ message: "Grievance submitted", data, priority });
   } catch (err) {
@@ -175,6 +180,8 @@ app.post('/api/notify-status', async (req, res) => {
       }
     }
 
+    await publishGrievanceMetricsSafe();
+
     const command = new PublishCommand({
       TopicArn: process.env.AWS_SNS_TOPIC_ARN,
       Message: `Your grievance ${grievanceId} status has been updated to ${newStatus}.`,
@@ -193,6 +200,17 @@ app.post('/api/notify-status', async (req, res) => {
   } catch (err) {
     console.error('Error publishing SNS message:', err);
     res.status(500).json({ error: 'Failed to send notification.' });
+  }
+});
+
+// Manually publish a fresh metrics snapshot (e.g. to seed the CloudWatch dashboard before a demo).
+app.post('/api/metrics/publish', async (req, res) => {
+  try {
+    const snapshot = await publishGrievanceMetrics();
+    res.json({ success: true, snapshot });
+  } catch (err) {
+    console.error('Error publishing metrics:', err);
+    res.status(500).json({ error: 'Failed to publish metrics.' });
   }
 });
 

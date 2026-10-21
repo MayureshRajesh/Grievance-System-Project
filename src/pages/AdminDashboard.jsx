@@ -138,7 +138,9 @@ function AdminDashboard() {
                 .update({
                     status: newStatus,
                     progress,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
+                    // Drives the AverageResolutionHours CloudWatch metric; cleared if reopened.
+                    resolved_at: ['resolved', 'closed'].includes(newStatus) ? new Date().toISOString() : null
                 })
                 .eq('id', grievanceId);
 
