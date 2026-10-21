@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, PutObjectTaggingCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { createClient } from '@supabase/supabase-js';
@@ -153,10 +153,26 @@ app.post('/api/presigned-url', async (req, res) => {
 
 app.post('/api/notify-status', async (req, res) => {
   try {
-    const { grievanceId, newStatus } = req.body;
+    const { grievanceId, newStatus, s3ImageUrl } = req.body;
     
     if (!grievanceId || !newStatus) {
       return res.status(400).json({ error: 'grievanceId and newStatus are required.' });
+    }
+
+    // Tag the attachment so the S3 lifecycle rule (status=resolved -> Glacier) can pick it up.
+    // Best-effort: a tagging failure must not block the status notification.
+    if (s3ImageUrl) {
+      try {
+        const key = decodeURIComponent(new URL(s3ImageUrl).pathname.slice(1));
+        const resolved = newStatus === 'resolved' || newStatus === 'closed';
+        await s3Client.send(new PutObjectTaggingCommand({
+          Bucket: process.env.AWS_S3_BUCKET_NAME,
+          Key: key,
+          Tagging: { TagSet: [{ Key: 'status', Value: resolved ? 'resolved' : 'active' }] },
+        }));
+      } catch (tagErr) {
+        console.error('Failed to tag S3 object:', tagErr);
+      }
     }
 
     const command = new PublishCommand({

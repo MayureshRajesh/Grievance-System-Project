@@ -151,7 +151,8 @@ function AdminDashboard() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         grievanceId,
-                        newStatus
+                        newStatus,
+                        s3ImageUrl: grievances.find(g => g.id === grievanceId)?.s3_image_url
                     })
                 }).catch(err => console.error('Failed to notify status:', err));
 
