@@ -21,7 +21,7 @@ A web application for a university campus (VIT) where students lodge grievances 
 | Authentication | Supabase Auth (email + password) |
 | Backend API | Node.js + Express 5 (`server.js`), deployed as a **Vercel serverless function** (`api/[...path].js`) |
 | File storage | **Supabase Storage** bucket `grievance-images` **and** **AWS S3** bucket (redundant copies) |
-| Cloud services | AWS S3 (presigned uploads, tag-based lifecycle rule to Glacier Instant Retrieval), AWS SNS (email notifications), AWS CloudWatch (custom metrics + live dashboard), AWS Comprehend (sentiment-based priority; implemented but paid, so optional) |
+| Cloud services | AWS S3 (presigned uploads, tag-based lifecycle rule to Glacier Instant Retrieval), AWS SNS (email notifications), AWS CloudWatch (custom metrics + live dashboard), AWS CloudTrail (audit logging of AWS API activity), AWS Comprehend (sentiment-based priority; implemented but paid, so optional) |
 | Hosting | Vercel (frontend static build + `/api/*` serverless routes, SPA rewrites in `vercel.json`) |
 
 ## 3. Database: tables and columns (as used in code)
@@ -141,6 +141,27 @@ INSERT INTO grievances (title, category, location, description, privacy, user_id
 7. **Metrics publishing:** after every new grievance and every status change, the backend (`metricsService.js`) reads all grievances with the Supabase **service role key** (needed because RLS would hide rows from the anon key), computes the aggregates in memory and calls CloudWatch `PutMetricData` in namespace `GrievanceSystem`: `GrievanceCount` with a `Category`, `Location` or `Status` dimension, plus `TotalGrievances` and `AverageResolutionHours`. Legacy `wifi/network` is folded into `wifi_network`. Publishing is best-effort (errors are logged, never block the request) and awaited before responding because Vercel can freeze a serverless function after the response. `POST /api/metrics/publish` publishes a snapshot on demand.
 8. **CloudWatch dashboard:** `npm run metrics:dashboard` (`scripts/setup-cloudwatch-dashboard.js`) publishes a snapshot and creates the dashboard `Grievance-System` via `PutDashboard`: single-value widgets (total grievances, average resolution hours), a status pie chart, bar charts by category and by location, and time-series widgets (status over time, resolution-time trend). Charts use `SEARCH` expressions so new categories/locations appear automatically; the dashboard auto-refreshes (e.g. every 10 s) for live demo display. IAM needs `cloudwatch:PutMetricData` and `cloudwatch:PutDashboard`.
 
+### 6.1 Audit logging with AWS CloudTrail (configured in AWS, no application code)
+
+- **Event history** (always on, free, 90 days): management events such as creating the S3 lifecycle rule (`PutBucketLifecycleConfiguration`), IAM policies (`PutUserPolicy`), the CloudWatch dashboard (`PutDashboard`), and console sign-ins (`ConsoleLogin`).
+- **Trail `grievance-audit-trail`** (region `ap-south-1`, multi-region), with these settings:
+  - Delivers logs to a **separate** S3 bucket, never the attachments bucket, to avoid a logging feedback loop.
+  - Log file validation is enabled, so CloudTrail writes SHA-256 hash digest files and tampering with the audit log can be detected.
+  - SSE-KMS is off (S3 default encryption still applies) and SNS delivery is off.
+  - Streams to the CloudWatch Logs group `aws-cloudtrail-logs-grievance-audit-trail` through an auto-created IAM role.
+- **Events captured:**
+  - Management events, both Read and Write, with KMS and RDS Data API events excluded.
+  - **S3 data events** limited by an advanced event selector to `resources.ARN` starting with `arn:aws:s3:::<bucket>/uploads/`, which is only grievance attachments.
+  - The S3 events are `PutObject` (a student uploads an attachment through the presigned URL; `sourceIPAddress` is the student's browser), `PutObjectTagging` (an admin resolves the grievance and the object is tagged for Glacier) and `GetObject` (an attachment is viewed).
+  - Insights and network activity events are off because they are paid.
+- **Querying** in CloudWatch Logs Insights:
+  ```
+  fields eventTime, eventName, sourceIPAddress, userIdentity.userName, requestParameters.key
+  | filter eventSource = "s3.amazonaws.com" and eventName in ["PutObject", "PutObjectTagging"]
+  | sort eventTime desc
+  ```
+- **Cost:** the first trail's management events are free. S3 data events cost about $0.10 per 100k. Log storage is minimal and falls within the CloudWatch Logs free tier.
+
 ## 7. DBMS concepts demonstrated (talking points for the report)
 
 - **Relational modelling** of a real workflow: entities (users, grievances, comments, notes), 1-to-many relationships, foreign keys.
@@ -155,6 +176,8 @@ INSERT INTO grievances (title, category, location, description, privacy, user_id
 - **Data lifecycle management / cost optimisation (hot vs cold storage):** active grievances' attachments stay in S3 Standard; resolved ones are archived automatically via a tag-driven lifecycle rule. Lifecycle rules are time/tag based, not event based, so the application bridges the event ("grievance resolved") to the rule by setting an object tag. Glacier Instant Retrieval (about 68% cheaper storage than Standard, millisecond reads) was chosen over Glacier Flexible/Deep Archive so attachments still render in the grievance detail view without a restore job. Trade-offs: 90-day minimum storage duration, 128 KB minimum billable object size, per-GB retrieval fee. Only the S3 copy is tiered; the Supabase copy is unaffected.
 - **Analytical aggregation and observability:** the OLTP data in PostgreSQL is rolled up with `GROUP BY`-style aggregates (count per category/location/status, `AVG` of resolution time) and exported as time-series metrics to CloudWatch, separating operational queries from monitoring/analytics. Resolution time is derived from two timestamps (`created_at`, `resolved_at`), which is why `resolved_at` was added instead of inferring it from the mutable `updated_at`.
 - **Snapshot vs event metrics:** metrics are republished as full snapshots (idempotent, self-correcting) rather than incrementing counters, so counts cannot drift when statuses change or rows are reopened. Trade-off: each event rescans the table, which is fine at campus scale but would need a materialised view or incremental counters for large volumes.
+- **Auditing and accountability:** an append-only, tamper-evident log (CloudTrail with log file validation) of who did what, when and from where. It plays the same role for cloud resources that a database audit log or WAL plays for data. It also gives each attachment a chain of custody: uploaded by whom and from which IP, archived when, viewed by whom.
+- **Separation of audit data from operational data:** audit records live in a different bucket and log group from the data they describe, so they can't be overwritten through the application's own access path.
 - **Denormalization trade-off:** `user_email` and `user_role` copied into rows for fast display without joins.
 - **Filtering, ordering and pattern matching:** `ILIKE`, `LIKE 'prefix%'`, `ORDER BY created_at DESC`.
 
@@ -165,7 +188,7 @@ INSERT INTO grievances (title, category, location, description, privacy, user_id
 3. **Pings encoded inside message text** (`LIKE '[PING]%'`). A `grievances.is_pinged` boolean already exists in the schema but is unused, so there are two competing representations. Fix: use `is_pinged`, or a separate `escalations` table (who, when, grievance).
 4. **`progress` duplicates information in `status`** (redundant, can become inconsistent). Fix: compute in a view or a generated column, or a `CASE` expression.
 5. **`updated_at` is set by the client.** Fix: a `BEFORE UPDATE` trigger setting `updated_at = now()`.
-6. **No audit history** of status changes. Fix: a `grievance_status_history` table filled by an `AFTER UPDATE` trigger.
+6. **No audit history** of status changes in the database. CloudTrail only audits AWS API calls (S3 uploads, tagging, configuration). It cannot see Supabase/PostgreSQL row changes such as status updates, comments or notes. Fix: a `grievance_status_history` table filled by an `AFTER UPDATE` trigger (or Supabase/pgAudit logging).
 7. **`internal_notes` stores `sender_email` but not `sender_id`, and `grievance_id` is `text` with no foreign key.** Fix: `uuid` type, FK to `grievances(id)` (with ON DELETE CASCADE like `comments`), and a `sender_id` FK.
 7b. **Over-permissive RLS** (see section 4): `USING (true)` read policies expose private grievances and internal notes to every authenticated user. Fix: drop them and restrict by owner / role.
 7c. **Unused columns** `comments.is_anonymous` and `grievances.is_pinged` suggest schema drift between the DB and the code.
@@ -177,7 +200,7 @@ INSERT INTO grievances (title, category, location, description, privacy, user_id
 
 ## 9. Possible future work (AWS, free tier friendly)
 
-(S3 lifecycle archiving of resolved attachments and the CloudWatch metrics dashboard are already implemented, see section 6 steps 6-8.)
+(S3 lifecycle archiving of resolved attachments and the CloudWatch metrics dashboard are already implemented, see section 6 steps 6-8; CloudTrail auditing is also configured, see 6.1.)
 
 Step Functions grievance workflow, EventBridge Scheduler for SLA escalation of long-pending grievances, CloudWatch alarms (e.g. SNS alert when pending grievances or average resolution time exceed a threshold), DynamoDB or Postgres audit trail, CloudFront with a private bucket and signed URLs, and infrastructure-as-code with AWS CDK.
 
