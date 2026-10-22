@@ -1,11 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, PutObjectTaggingCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { createClient } from '@supabase/supabase-js';
 import { isHighlyNegative } from './comprehendService.js';
+import { publishGrievanceMetrics, publishGrievanceMetricsSafe } from './metricsService.js';
 
 dotenv.config();
 
@@ -97,6 +98,7 @@ app.post('/api/grievances', async (req, res) => {
         .select();
 
       if (!retryResult.error) {
+        await publishGrievanceMetricsSafe();
         return res.status(201).json({
           message: "Grievance submitted (Notice: 'priority' column missing in Supabase schema cache)",
           data: retryResult.data,
@@ -110,6 +112,9 @@ app.post('/api/grievances', async (req, res) => {
       console.error('Supabase error inserting grievance:', error);
       return res.status(500).json({ error: error.message || error });
     }
+
+    // Awaited (not fire-and-forget) because Vercel may freeze the function after the response.
+    await publishGrievanceMetricsSafe();
 
     res.status(201).json({ message: "Grievance submitted", data, priority });
   } catch (err) {
@@ -153,11 +158,29 @@ app.post('/api/presigned-url', async (req, res) => {
 
 app.post('/api/notify-status', async (req, res) => {
   try {
-    const { grievanceId, newStatus } = req.body;
+    const { grievanceId, newStatus, s3ImageUrl } = req.body;
     
     if (!grievanceId || !newStatus) {
       return res.status(400).json({ error: 'grievanceId and newStatus are required.' });
     }
+
+    // Tag the attachment so the S3 lifecycle rule (status=resolved -> Glacier) can pick it up.
+    // Best-effort: a tagging failure must not block the status notification.
+    if (s3ImageUrl) {
+      try {
+        const key = decodeURIComponent(new URL(s3ImageUrl).pathname.slice(1));
+        const resolved = newStatus === 'resolved' || newStatus === 'closed';
+        await s3Client.send(new PutObjectTaggingCommand({
+          Bucket: process.env.AWS_S3_BUCKET_NAME,
+          Key: key,
+          Tagging: { TagSet: [{ Key: 'status', Value: resolved ? 'resolved' : 'active' }] },
+        }));
+      } catch (tagErr) {
+        console.error('Failed to tag S3 object:', tagErr);
+      }
+    }
+
+    await publishGrievanceMetricsSafe();
 
     const command = new PublishCommand({
       TopicArn: process.env.AWS_SNS_TOPIC_ARN,
@@ -177,6 +200,17 @@ app.post('/api/notify-status', async (req, res) => {
   } catch (err) {
     console.error('Error publishing SNS message:', err);
     res.status(500).json({ error: 'Failed to send notification.' });
+  }
+});
+
+// Manually publish a fresh metrics snapshot (e.g. to seed the CloudWatch dashboard before a demo).
+app.post('/api/metrics/publish', async (req, res) => {
+  try {
+    const snapshot = await publishGrievanceMetrics();
+    res.json({ success: true, snapshot });
+  } catch (err) {
+    console.error('Error publishing metrics:', err);
+    res.status(500).json({ error: 'Failed to publish metrics.' });
   }
 });
 
